@@ -6,6 +6,7 @@ import sys
 
 from sklearn.metrics import roc_curve, auc, confusion_matrix
 
+
 def plot_roc_auc(y_true, y_pred):
     """
     This function plots the ROC curves and provides the scores.
@@ -15,7 +16,7 @@ def plot_roc_auc(y_true, y_pred):
     fpr = dict()
     tpr = dict()
     roc_auc = np.zeros(3)
-    
+
     # prepare for figure
     plt.figure()
     colors = ['aqua', 'cornflowerblue']
@@ -23,15 +24,15 @@ def plot_roc_auc(y_true, y_pred):
     # for both classification tasks (categories 1 and 2)
     for i in range(2):
         # obtain ROC curve
-        fpr[i], tpr[i], _ = roc_curve(y_true[:,i], y_pred[:,i])
+        fpr[i], tpr[i], _ = roc_curve(y_true[:, i], y_pred[:, i])
         # obtain ROC AUC
         roc_auc[i] = auc(fpr[i], tpr[i])
         # plot ROC curve
         plt.plot(fpr[i], tpr[i], color=colors[i], lw=2,
-                 label='ROC curve for task {d} (area = {f:.2f})'.format(d=i+1, f=roc_auc[i]))
+                 label='ROC curve for task {d} (area = {f:.2f})'.format(d=i + 1, f=roc_auc[i]))
     # get score for category 3
     roc_auc[2] = np.average(roc_auc[:2])
-    
+
     # format figure
     plt.plot([0, 1], [0, 1], 'k--', lw=2)
     plt.xlim([0.0, 1.0])
@@ -41,10 +42,11 @@ def plot_roc_auc(y_true, y_pred):
     plt.title('ROC curves')
     plt.legend(loc="lower right")
     plt.show()
-    
+
     # print scores
     for i in range(3):
-        print('Category {d} Score: {f:.3f}'. format(d=i+1, f=roc_auc[i]))
+        print('Category {d} Score: {f:.3f}'.format(d=i + 1, f=roc_auc[i]))
+
 
 def plot_confusion_matrix(y_true, y_pred, thresh, classes):
     """
@@ -52,12 +54,12 @@ def plot_confusion_matrix(y_true, y_pred, thresh, classes):
     """
 
     # obtain class predictions from probabilities
-    y_pred = (y_pred>=thresh)*1
+    y_pred = (y_pred >= thresh) * 1
     # obtain (unnormalized) confusion matrix
     cm = confusion_matrix(y_true, y_pred)
     # normalize confusion matrix
     cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-    
+
     plt.figure()
     plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
     plt.title('Confusion matrix')
@@ -77,10 +79,11 @@ def plot_confusion_matrix(y_true, y_pred, thresh, classes):
     plt.xlabel('Predicted label')
     plt.show()
 
+
 if __name__ == "__main__":
 
     preds_path = sys.argv[1]
-    if len(sys.argv)==3:
+    if len(sys.argv) == 3:
         thresh = float(sys.argv[2])
     else:
         thresh = 0.5
@@ -97,4 +100,4 @@ if __name__ == "__main__":
     plot_roc_auc(y_true, y_pred)
     # plot confusion matrix
     classes = ['benign', 'malignant']
-    plot_confusion_matrix(y_true[:,0], y_pred[:,0], thresh, classes)
+    plot_confusion_matrix(y_true[:, 0], y_pred[:, 0], thresh, classes)
