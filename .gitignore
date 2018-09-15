@@ -4,3 +4,7 @@ data/
 *.pyc
 */.ipynb_checkpoints/*
 .ipynb_checkpoints
+logs/
+*.npy
+*.hdf5
+get_started_workspace.ipynb
