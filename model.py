@@ -114,4 +114,4 @@ def train_model(model,
 
 if __name__ == "__main__":
     m = get_model()
-    train_model(m, batch_size=256)
+    train_model(m, batch_size=512)
