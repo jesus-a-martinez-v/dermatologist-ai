@@ -13,10 +13,11 @@ from keras.models import Model
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.np_utils import to_categorical
 
-BASE_PATH = os.path.join("/", "floyd", "input", "data")
-TRAIN_DATA = os.path.join(BASE_PATH, "train")
-VALIDATION_DATA = os.path.join(BASE_PATH, "valid")
-TEST_DATA = os.path.join(BASE_PATH, "test")
+BASE_PATH = os.path.join('/', 'floyd', 'input', 'data')
+
+TRAIN_DATA = os.path.join(BASE_PATH, 'train')
+VALIDATION_DATA = os.path.join(BASE_PATH, 'valid')
+TEST_DATA = os.path.join(BASE_PATH, 'test')
 
 MAPPING = {'seborrheic_keratosis': 0,
            'melanoma': 1,
@@ -28,13 +29,13 @@ def load_dataset(image_directory, dataset):
     image_labels = []
     image_types = {'seborrheic_keratosis', 'melanoma', 'nevus'}
 
-    x_name = "./%s_images.npy" % dataset
-    y_name = "./%s_labels.npy" % dataset
+    x_name = f'./{dataset}_images.npy'
+    y_name = f'./{dataset}_labels.npy' 
 
-    # Iterave over each subfolder corresponding to the type of image and add the image to the resulting list.
+    # Iterate over each subfolder corresponding to the type of image and add the image to the resulting list.
     if not Path(x_name).is_file() or not Path(y_name).is_file():
         for image_type in image_types:
-            print("Loading images in folder: %s" % os.path.join(image_directory, image_type))
+            print('Loading images in folder: {os.path.join(image_directory, image_type)}')
 
             for file in glob.glob(os.path.join(image_directory, image_type, '*')):
                 image = mpimg.imread(file)
@@ -66,14 +67,14 @@ def get_model():
     x = GlobalAveragePooling2D()(x)
     x = Dense(1024, activation='relu')(x)
     x = Dense(512, activation='relu')(x)
-    predictions = Dense(3, activation="softmax")(x)
+    predictions = Dense(3, activation='softmax')(x)
 
     model = Model(inputs=base_model.input, outputs=predictions)
 
     for layer in base_model.layers:
         layer.trainable = False
 
-    model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=['acc', metrics.categorical_accuracy])
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc', metrics.categorical_accuracy])
 
     return model
 
@@ -90,18 +91,18 @@ def train_model(model,
     test_datagen = ImageDataGenerator(rescale=1. / 255)
 
     # Actual generators
-    x_train, y_train = load_dataset(TRAIN_DATA, "train")
+    x_train, y_train = load_dataset(TRAIN_DATA, 'train')
     y_train = to_categorical(y_train, num_classes=3)
     train_generator = train_datagen.flow(x_train, y_train, batch_size=batch_size)
 
-    x_validation, y_validation = load_dataset(VALIDATION_DATA, "validation")
+    x_validation, y_validation = load_dataset(VALIDATION_DATA, 'validation')
     y_validation = to_categorical(y_validation, num_classes=3)
     validation_generator = test_datagen.flow(x_validation, y_validation, batch_size=batch_size)
 
     callbacks = [
         TensorBoard(),
         EarlyStopping(patience=3),
-        ModelCheckpoint("weights.{epoch:02d}-{val_loss:.2f}.hdf5")
+        ModelCheckpoint('weights.{epoch:02d}-{val_loss:.2f}.hdf5')
     ]
 
     model.fit_generator(train_generator,
@@ -112,6 +113,6 @@ def train_model(model,
                         callbacks=callbacks)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     m = get_model()
     train_model(m, batch_size=512)
