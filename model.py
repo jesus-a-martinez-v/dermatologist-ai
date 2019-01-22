@@ -7,13 +7,14 @@ import matplotlib.image as mpimg
 import numpy as np
 from keras import metrics
 from keras.applications.inception_resnet_v2 import InceptionResNetV2
-from keras.callbacks import EarlyStopping, TensorBoard, ModelCheckpoint
-from keras.layers import Dense, GlobalAveragePooling2D
+from keras.callbacks import EarlyStopping, TensorBoard, ModelCheckpoint, ReduceLROnPlateau
+from keras.engine.saving import load_model
+from keras.layers import Dense, GlobalAveragePooling2D, Activation, BatchNormalization, LeakyReLU
 from keras.models import Model
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.np_utils import to_categorical
 
-BASE_PATH = os.path.join('/', 'floyd', 'input', 'data')
+BASE_PATH = os.path.join('.', 'data')
 
 TRAIN_DATA = os.path.join(BASE_PATH, 'train')
 VALIDATION_DATA = os.path.join(BASE_PATH, 'valid')
@@ -30,7 +31,7 @@ def load_dataset(image_directory, dataset):
     image_types = {'seborrheic_keratosis', 'melanoma', 'nevus'}
 
     x_name = f'./{dataset}_images.npy'
-    y_name = f'./{dataset}_labels.npy' 
+    y_name = f'./{dataset}_labels.npy'
 
     # Iterate over each subfolder corresponding to the type of image and add the image to the resulting list.
     if not Path(x_name).is_file() or not Path(y_name).is_file():
@@ -59,20 +60,26 @@ def load_dataset(image_directory, dataset):
     return image_list, image_labels
 
 
-# TODO Create a function for each pretrained model.
-def get_model():
+def get_model(train_all_layers=False):
     base_model = InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
 
     x = base_model.output
     x = GlobalAveragePooling2D()(x)
-    x = Dense(1024, activation='relu')(x)
-    x = Dense(512, activation='relu')(x)
-    predictions = Dense(3, activation='softmax')(x)
+    x = Dense(1024, kernel_initializer='uniform')(x)
+    x = BatchNormalization()(x)
+    x = LeakyReLU()(x)
+    x = Dense(512, kernel_initializer='uniform')(x)
+    x = BatchNormalization()(x)
+    x = LeakyReLU()(x)
+    x = Dense(3, kernel_initializer='uniform')(x)
+    x = BatchNormalization()(x)
+    predictions = Activation('softmax')(x)
 
     model = Model(inputs=base_model.input, outputs=predictions)
 
-    for layer in base_model.layers:
-        layer.trainable = False
+    if not train_all_layers:
+        for layer in base_model.layers:
+            layer.trainable = False
 
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc', metrics.categorical_accuracy])
 
@@ -81,12 +88,13 @@ def get_model():
 
 def train_model(model,
                 epochs=50,
-                image_size=(299, 299, 3),
                 batch_size=64,
-                train_steps_per_epoch=2000,
-                validation_steps=800):
-    # Data agumentation generators
-    train_datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
+                train_steps_per_epoch=None,
+                validation_steps=None):
+    # Data augmentation generators
+    train_datagen = ImageDataGenerator(rescale=1. / 255,
+                                       horizontal_flip=True,
+                                       rotation_range=10)
 
     test_datagen = ImageDataGenerator(rescale=1. / 255)
 
@@ -101,18 +109,41 @@ def train_model(model,
 
     callbacks = [
         TensorBoard(),
-        EarlyStopping(patience=3),
-        ModelCheckpoint('weights.{epoch:02d}-{val_loss:.2f}.hdf5')
+        EarlyStopping(patience=4),
+        ModelCheckpoint('weights.{epoch:02d}-{val_loss:.2f}.hdf5'),
+        ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, min_lr=0.001)
     ]
 
+    if train_steps_per_epoch is None:
+        train_steps_per_epoch = len(x_train) // batch_size
+
+    if validation_steps is None:
+        validation_steps = len(x_validation) // batch_size
+
     model.fit_generator(train_generator,
-                        # steps_per_epoch=train_steps_per_epoch,
+                        steps_per_epoch=train_steps_per_epoch,
                         epochs=epochs,
                         validation_data=validation_generator,
-                        # validation_steps=validation_steps, 
+                        validation_steps=validation_steps,
                         callbacks=callbacks)
 
 
+def resume_training(weight_file_path,
+                    epochs=50,
+                    batch_size=64,
+                    train_steps_per_epoch=2000,
+                    validation_steps=800):
+    model = load_model(weight_file_path)
+    train_model(model, epochs, batch_size, train_steps_per_epoch, validation_steps)
+
+
 if __name__ == '__main__':
-    m = get_model()
-    train_model(m, batch_size=512)
+    # m = get_model()
+    # train_model(m, batch_size=16)
+    # file = './weights.01-1.54.hdf5'
+    # resume_training(file, batch_size=16, epochs=49)
+    m = load_model('./weights.02-1.11.hdf5')
+    x_test, y_test = load_dataset(TEST_DATA, 'test')
+    print(m.predict(x_test))
+
+
